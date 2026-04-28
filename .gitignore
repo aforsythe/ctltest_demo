@@ -1,0 +1,12 @@
+# build artifacts
+/build/
+/scripts/.cache/
+
+# editor / OS
+.DS_Store
+.vscode/
+.idea/
+
+# test outputs
+ctltest-junit.xml
+*.tmp

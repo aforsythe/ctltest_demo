@@ -1,0 +1,111 @@
+name: ci
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: ["**"]
+
+permissions:
+  contents: read
+
+env:
+  CTL_REPO: https://github.com/aforsythe/CTL.git
+  CTL_REF:  3ff847d552a5e008d0b828a3b8a5ad795660e95d
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+
+  build-ctltest:
+    name: build ctltest from CTL fork
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: cache prebuilt ctltest binary
+        id: cache-ctltest
+        uses: actions/cache@v4
+        with:
+          path: ctltest-bin
+          key: ctltest-${{ env.CTL_REF }}-${{ runner.os }}
+
+      - name: install build dependencies
+        if: steps.cache-ctltest.outputs.cache-hit != 'true'
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install \
+            cmake libtiff-dev libimath-dev libopenexr-dev libyaml-cpp-dev
+
+      - name: clone CTL fork at pinned SHA
+        if: steps.cache-ctltest.outputs.cache-hit != 'true'
+        run: |
+          git clone --filter=blob:none "$CTL_REPO" ctl-fork
+          git -C ctl-fork checkout "$CTL_REF"
+
+      - name: configure & build ctltest
+        if: steps.cache-ctltest.outputs.cache-hit != 'true'
+        # SLEEF=OFF: apt libsleef-dev ships no CMake config; FetchContent
+        #   fallback doesn't expose the sleef::sleef target.
+        # LTO=OFF: upstream default is -flto=thin, which GCC rejects.
+        # NATIVE_ARCH=OFF: -march=native makes the cached artifact
+        #   spuriously specific to the runner.
+        run: |
+          cmake -B ctl-fork/build \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCTL_BUILD_MODULETEST=ON \
+            -DCTL_USE_SLEEF=OFF \
+            -DCTL_LTO=OFF \
+            -DCTL_NATIVE_ARCH=OFF \
+            ctl-fork
+          cmake --build ctl-fork/build -j --target ctltest
+
+      - name: stage built binary
+        if: steps.cache-ctltest.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ctltest-bin
+          cp ctl-fork/build/moduletest/cli/ctltest ctltest-bin/ctltest
+          chmod +x ctltest-bin/ctltest
+
+      - name: upload ctltest artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctltest
+          path: ctltest-bin/ctltest
+          if-no-files-found: error
+
+  test:
+    name: run ctltest suites
+    runs-on: ubuntu-latest
+    needs: build-ctltest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install runtime dependencies
+        run: |
+          sudo apt-get -y update
+          sudo apt-get -y install \
+            libtiff6 libopenexr-3-1-30 libyaml-cpp0.7 \
+          || sudo apt-get -y install libtiff-dev libopenexr-dev libyaml-cpp-dev
+
+      - name: download ctltest artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: ctltest
+          path: bin
+
+      - name: mark ctltest executable
+        run: chmod +x bin/ctltest
+
+      - name: run all suites (console)
+        run: ./bin/ctltest tests/
+
+      - name: run all suites (JUnit)
+        run: ./bin/ctltest --reporter junit --output ctltest-junit.xml tests/
+
+      - name: upload JUnit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ctltest-junit
+          path: ctltest-junit.xml
+          if-no-files-found: warn

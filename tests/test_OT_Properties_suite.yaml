@@ -1,0 +1,37 @@
+version: 1
+suite: OT_Properties
+
+modules:
+  - test_OT_Properties
+  - OT_Encoding
+  - OT_Tonescale
+  - OT_Colorspace
+
+module_paths:
+  - .
+  - ../ctl
+
+tests:
+  - id: encode_decode_roundtrip_sweep
+    description: srgb_to_linear ∘ linear_to_srgb == identity over a 21-step sweep.
+    mode: ctl_native
+    function: test_OT_Properties::test_encode_decode_roundtrip_sweep
+    tags: [property, sweep]
+
+  - id: tonescale_monotonic
+    description: SDR tonescale is non-decreasing across x ∈ [0.05, 5.0].
+    mode: ctl_native
+    function: test_OT_Properties::test_tonescale_monotonic
+    tags: [property, monotonicity]
+
+  - id: rec709_matrix_pair_inverts
+    description: rec709_rgb_to_xyz ∘ xyz_to_rec709_rgb == identity within 1e-5.
+    mode: ctl_native
+    function: test_OT_Properties::test_rec709_matrix_pair_inverts
+    tags: [property, invariance]
+
+  - id: pipeline_intermediate_in_range
+    description: Mid-pipeline assertion — the use case YAML can't express.
+    mode: ctl_native
+    function: test_OT_Properties::test_pipeline_intermediate_in_range
+    tags: [intermediate]

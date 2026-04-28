@@ -1,0 +1,69 @@
+version: 1
+suite: OT_Tonescale
+
+modules:
+  - OT_Tonescale
+
+module_paths:
+  - ../ctl
+
+defaults:
+  tolerance:
+    abs: 1.0e-6
+
+tests:
+  - id: zero_in_zero_out
+    function: OT_Tonescale::tonescale
+    inputs:
+      x_in: 0.0
+      p: { exposure: 1.0, white_point: 4.0, shoulder: 0.0 }
+    tolerance: { abs: 0.0 }
+    oracle:
+      inline: { return: 0.0 }
+
+  - id: negative_clamps_to_zero
+    function: OT_Tonescale::tonescale
+    inputs:
+      x_in: -0.5
+      p: { exposure: 1.0, white_point: 4.0, shoulder: 0.0 }
+    oracle:
+      inline: { return: 0.0 }
+
+  - id: pure_clip_at_shoulder_one
+    description: shoulder=1 collapses to x/white_point, clipped at 1.
+    function: OT_Tonescale::tonescale
+    inputs:
+      x_in: 2.0
+      p: { exposure: 1.0, white_point: 4.0, shoulder: 1.0 }
+    oracle:
+      inline: { return: 0.5 }
+
+  - id: pure_clip_above_white
+    function: OT_Tonescale::tonescale
+    inputs:
+      x_in: 8.0
+      p: { exposure: 1.0, white_point: 4.0, shoulder: 1.0 }
+    oracle:
+      inline: { return: 1.0 }
+
+  - id: exposure_scales_input
+    description: exposure=2, x=0.5 evaluates as if exposure=1, x=1.0.
+    function: OT_Tonescale::tonescale
+    inputs:
+      x_in: 0.5
+      p: { exposure: 2.0, white_point: 4.0, shoulder: 0.0 }
+    tolerance: { rel: 1.0e-6 }
+    oracle:
+      inline: { return: 0.53125 }       # (1 * (1 + 1/16)) / (1 + 1)
+
+  - id: sdr_lut_snapshot
+    description: 256 samples of the SDR curve over x ∈ [0, 4].
+    function: OT_Tonescale::sample_lut_256
+    inputs:
+      p: { exposure: 1.0, white_point: 4.0, shoulder: 0.25 }
+      x_min: 0.0
+      x_max: 4.0
+    oracle:
+      snapshot:
+        path: snapshots/sdr_lut_256.yaml
+        writable: true

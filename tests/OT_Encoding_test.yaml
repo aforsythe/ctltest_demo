@@ -1,0 +1,62 @@
+version: 1
+suite: OT_Encoding
+
+modules:
+  - OT_Encoding
+
+module_paths:
+  - ../ctl
+
+defaults:
+  tolerance:
+    abs: 1.0e-6
+    rel: 1.0e-6
+
+tests:
+  - id: roundtrip_18_percent_grey
+    function: OT_Encoding::srgb_to_linear
+    inputs:
+      x: 0.46135613              # linear_to_srgb(0.18)
+    tolerance: { abs: 1.0e-5 }
+    oracle:
+      inline: { return: 0.18 }
+
+  - id: encode_zero_is_zero
+    function: OT_Encoding::linear_to_srgb
+    inputs: { x: 0.0 }
+    tolerance: { abs: 0.0 }
+    oracle:
+      inline: { return: 0.0 }
+
+  - id: encode_one_is_one
+    function: OT_Encoding::linear_to_srgb
+    inputs: { x: 1.0 }
+    tolerance: { ulp: 2 }
+    oracle:
+      inline: { return: 1.0 }
+
+  - id: encode_at_breakpoint
+    description: x = 0.0031308 — the piecewise breakpoint, evaluated on the linear leg.
+    function: OT_Encoding::linear_to_srgb
+    inputs: { x: 0.0031308 }
+    oracle:
+      inline: { return: 0.040449936 }
+
+  - id: encode_half_overload
+    function: OT_Encoding::linear_to_srgb_h
+    inputs: { x: 0.18 }
+    tolerance: { abs: 5.0e-4 }
+    oracle:
+      inline: { return: 0.46135613 }
+
+  - id: sweep_linear_to_srgb
+    description: 20-row sweep across the curve, both legs and an out-of-range x.
+    mode: sweep
+    function: OT_Encoding::linear_to_srgb
+    sweep:
+      inputs: OT_Encoding_sweep_inputs.csv
+    tolerance:
+      abs: 1.0e-6
+      rel: 1.0e-6
+    oracle:
+      csv: OT_Encoding_sweep_expected.csv

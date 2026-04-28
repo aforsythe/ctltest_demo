@@ -1,0 +1,104 @@
+version: 1
+suite: OT_Colorspace
+
+modules:
+  - OT_Colorspace
+
+module_paths:
+  - ../ctl
+
+defaults:
+  tolerance:
+    abs: 1.0e-5
+
+tests:
+  - id: white_to_xyz
+    description: Rec.709 RGB white -> D65 XYZ; tighter per_field tolerance on Y.
+    function: OT_Colorspace::rec709_rgb_to_xyz
+    inputs: { R: 1.0, G: 1.0, B: 1.0 }
+    tolerance:
+      abs: 1.0e-5
+      per_field:
+        Y: { abs: 1.0e-7 }
+    oracle:
+      inline:
+        X: 0.9504559270518716
+        Y: 1.0
+        Z: 1.0890577557321604
+
+  - id: xyz_white_to_rgb
+    function: OT_Colorspace::xyz_to_rec709_rgb
+    inputs:
+      X: 0.9504559270518716
+      Y: 1.0
+      Z: 1.0890577557321604
+    tolerance: { abs: 5.0e-6 }
+    oracle:
+      inline:
+        R: 1.0
+        G: 1.0
+        B: 1.0
+
+  - id: red_primary_luminance
+    description: Y(red) is the canonical Rec.709 luma weight 0.21263901.
+    function: OT_Colorspace::rec709_rgb_to_xyz
+    inputs: { R: 1.0, G: 0.0, B: 0.0 }
+    tolerance:
+      abs: 1.0e-5
+      per_field:
+        Y: { ulp: 1 }
+    oracle:
+      inline:
+        X: 0.4123907992659593
+        Y: 0.21263900587151022
+        Z: 0.01933081871559182
+
+  - id: apply_view_dark_surround
+    description: surround=DARK, adapting_lum=100 -> gain 0.95.
+    function: OT_Colorspace::apply_view
+    inputs:
+      R: 0.5
+      G: 0.5
+      B: 0.5
+      view:
+        white_x: 0.3127
+        white_y: 0.3290
+        surround: 0
+        adapting_lum: 100.0
+    oracle:
+      inline:
+        R_out: 0.475
+        G_out: 0.475
+        B_out: 0.475
+
+  - id: apply_view_average_surround
+    description: surround=AVERAGE -> gain 1.0; output == input.
+    function: OT_Colorspace::apply_view
+    inputs:
+      R: 0.18
+      G: 0.42
+      B: 0.7
+      view:
+        white_x: 0.3127
+        white_y: 0.3290
+        surround: 2
+        adapting_lum: 100.0
+    tolerance: { abs: 1.0e-7 }
+    oracle:
+      inline:
+        R_out: 0.18
+        G_out: 0.42
+        B_out: 0.7
+
+  - id: rgb_xyz_roundtrip
+    function: OT_Colorspace::xyz_to_rec709_rgb
+    inputs:
+      X: 0.3495668591285099
+      Y: 0.33530856963822864
+      Z: 0.23553027374611585
+    tolerance: { ulp: 5 }
+    oracle:
+      inline:
+        R: 0.5
+        G: 0.3
+        B: 0.2

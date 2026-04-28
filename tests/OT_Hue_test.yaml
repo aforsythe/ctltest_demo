@@ -1,0 +1,84 @@
+version: 1
+suite: OT_Hue
+
+modules:
+  - OT_Hue
+
+module_paths:
+  - ../ctl
+
+defaults:
+  tolerance:
+    abs: 1.0e-6
+
+tests:
+  - id: zero_degrees_is_identity
+    function: OT_Hue::rotate_hue
+    inputs: { R: 0.5, G: 0.3, B: 0.2, degrees: 0.0 }
+    tolerance: { ulp: 2 }
+    oracle:
+      inline:
+        return:
+          R: 0.5
+          G: 0.3
+          B: 0.2
+          angle_deg: 0.0
+
+  - id: one_twenty_degrees_red_to_green
+    description: 120° around the (1,1,1) axis sends R -> G.
+    function: OT_Hue::rotate_hue
+    inputs: { R: 1.0, G: 0.0, B: 0.0, degrees: 120.0 }
+    tolerance:
+      abs: 1.0e-6
+      per_field:
+        return.R: { abs: 1.0e-6 }
+        return.B: { abs: 1.0e-6 }
+    oracle:
+      inline:
+        return:
+          R: 0.0
+          G: 1.0
+          B: 0.0
+          angle_deg: 120.0
+
+  - id: one_eighty_on_grey_is_identity
+    description: A neutral grey is a fixed point of any axial rotation.
+    function: OT_Hue::rotate_hue
+    inputs: { R: 0.5, G: 0.5, B: 0.5, degrees: 180.0 }
+    tolerance: { abs: 1.0e-6 }
+    oracle:
+      inline:
+        return:
+          R: 0.5
+          G: 0.5
+          B: 0.5
+          angle_deg: 180.0
+
+  - id: forty_five_on_red
+    function: OT_Hue::rotate_hue
+    inputs: { R: 1.0, G: 0.0, B: 0.0, degrees: 45.0 }
+    tolerance: { abs: 1.0e-5 }
+    oracle:
+      inline:
+        return:
+          R:  0.804737854124365
+          G:  0.5058793634016805
+          B: -0.31061721752604554
+          angle_deg: 45.0
+
+  - id: deliberate_xfail_tight_tol
+    description: |
+      known_failure: an unsatisfiable abs:1e-30 tolerance on a value that's
+      only stable to ~1 ULP. Reports XFAIL so the suite stays green; if the
+      math ever became bit-exact this would flip to UnexpectedPass.
+    function: OT_Hue::rotate_hue
+    known_failure: true
+    inputs: { R: 1.0, G: 0.0, B: 0.0, degrees: 120.0 }
+    tolerance: { abs: 1.0e-30 }
+    oracle:
+      inline:
+        return:
+          R: 0.0
+          G: 1.0
+          B: 0.0
+          angle_deg: 120.0

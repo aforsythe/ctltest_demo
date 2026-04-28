@@ -1,0 +1,62 @@
+version: 1
+suite: OT_OutputTransform
+
+modules:
+  - OT_OutputTransform
+  - OT_Encoding
+  - OT_Colorspace
+  - OT_Tonescale
+
+module_paths:
+  - ../ctl
+
+defaults:
+  tolerance:
+    abs: 1.0e-5
+
+tests:
+  - id: black_in_black_out
+    function: OT_OutputTransform::output_transform_pixel
+    inputs: { R: 0.0, G: 0.0, B: 0.0 }
+    tolerance: { abs: 1.0e-6 }
+    oracle:
+      inline:
+        R_out: 0.0
+        G_out: 0.0
+        B_out: 0.0
+
+  - id: middle_grey_compresses
+    description: Encoded 0.5 compresses under SDR tonescale; expected from build_reference_exr.py.
+    function: OT_OutputTransform::output_transform_pixel
+    inputs: { R: 0.5, G: 0.5, B: 0.5 }
+    tolerance: { abs: 5.0e-5 }
+    oracle:
+      inline:
+        R_out: 0.41667664
+        G_out: 0.41667664
+        B_out: 0.41667664
+
+  - id: macbeth_chain_image
+    description: 24x1 Macbeth-like patch strip diffed against the reference EXR.
+    mode: image
+    function: OT_OutputTransform::output_transform_pixel
+    image:
+      input: references/macbeth_rec709_src.exr
+      input_channels:
+        R: R
+        G: G
+        B: B
+      output_channels:
+        R: R_out
+        G: G_out
+        B: B_out
+      ulp_precision: float
+    tolerance:
+      abs: 1.0e-5
+      ulp: 8
+      per_channel:
+        G: { ulp: 4 }
+        B: { ulp: 16 }
+    oracle:
+      exr: references/macbeth_rec709_ref.exr
+      max_failing_pixels: 0

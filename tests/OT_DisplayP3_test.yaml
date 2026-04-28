@@ -1,0 +1,57 @@
+version: 1
+suite: OT_DisplayP3
+
+modules:
+  - OT_DisplayP3
+  - OT_Encoding
+
+module_paths:
+  - ../ctl
+
+defaults:
+  tolerance:
+    abs: 1.0e-5
+
+tests:
+  - id: white_to_xyz_d65
+    function: OT_DisplayP3::displayp3_rgb_to_xyz
+    inputs: { R: 1.0, G: 1.0, B: 1.0 }
+    tolerance: { abs: 1.0e-5 }
+    oracle:
+      inline:
+        X: 0.950455927051671
+        Y: 1.0
+        Z: 1.0890577507598789
+
+  - id: red_primary_to_xyz
+    function: OT_DisplayP3::displayp3_rgb_to_xyz
+    inputs: { R: 1.0, G: 0.0, B: 0.0 }
+    oracle:
+      inline:
+        X: 0.486570948648216
+        Y: 0.228974564775377
+        Z: 0.0
+
+  - id: grey_xyz_roundtrip
+    function: OT_DisplayP3::xyz_to_displayp3_rgb
+    inputs:
+      X: 0.4752279635258355
+      Y: 0.4999999999999995
+      Z: 0.5445288753799394
+    tolerance: { ulp: 5 }
+    oracle:
+      inline:
+        R: 0.5
+        G: 0.5
+        B: 0.5
+
+  - id: encode_to_display_clamps_negatives
+    description: Negatives clamp to 0.0; values above 1 clamp to 1.0 before encoding.
+    function: OT_DisplayP3::encode_to_display
+    inputs: { R_lin: -0.25, G_lin: 1.5, B_lin: 0.18 }
+    tolerance: { abs: 1.0e-5 }
+    oracle:
+      inline:
+        R_enc: 0.0
+        G_enc: 1.0
+        B_enc: 0.46135613       # linear_to_srgb(0.18)
